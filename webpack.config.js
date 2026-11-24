@@ -9,7 +9,7 @@ export default {
     'xhr.js': path.resolve('./src/xhr.ts'),
     'content.js': path.resolve('./src/content.ts'),
   },
-  devtool: 'inline-source-map',
+  devtool: false,
   resolve: {
     extensions: ['.js', '.ts', '.json'],
   },

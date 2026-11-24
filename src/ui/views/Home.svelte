@@ -32,8 +32,16 @@
     exportData()
   }
 
-  function onChangeImportFile(e: Event) {
-    importData(importRef.files?.[0])
+  let importError = ''
+  async function onChangeImportFile() {
+    importError = ''
+    try {
+      await importData(importRef.files?.[0])
+    } catch {
+      importError = 'Import failed. Choose a project JSON backup exported from this add-on and try again.'
+    } finally {
+      importRef.value = ''
+    }
   }
 
   function onClickCreateProject() {
@@ -58,6 +66,7 @@
     <Section>
       <Button block on:click={onClickImport}>Import</Button>
       <Button block on:click={onClickExport}>Export</Button>
+      {#if importError}<p role="alert">{importError}</p>{/if}
       <input
         type="file"
         accept="application/json"

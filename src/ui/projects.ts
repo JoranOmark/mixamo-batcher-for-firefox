@@ -1,7 +1,6 @@
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import { nanoid } from 'nanoid'
-import qs from 'qs'
 import { get, writable } from 'svelte/store'
 import { MessageType, ExportProductRequest, ExportProductResponse, Pack, Product, Project } from '../types'
 import { active, fetchHeaders, fetchPrimary, selectedCharacter, selectedProduct } from './app'
@@ -125,24 +124,6 @@ export function removeProduct(pack: Pack, productId: string) {
   }
 }
 
-export function setSearchQuery(tab: chrome.tabs.Tab, product: Product) {
-  return new Promise<chrome.tabs.Tab>((resolve) => {
-    const url = tab.url || ''
-    const urlArr = url.split('?')
-    const urlParams = qs.stringify({
-      ...qs.parse(urlArr[1]),
-      query: product.description,
-    })
-    const newUrl = `${urlArr[0]}?${urlParams}`
-
-    if (tab.id) {
-      chrome.tabs.update(tab.id, { url: newUrl }, () => {
-        resolve(tab)
-      })
-    }
-  })
-}
-
 async function checkedFetch(url: string, options: RequestInit) {
   const response = await fetch(url, options)
   if (!response.ok) {
@@ -178,6 +159,12 @@ export function downloadHostAccess(host: string, review = false): Promise<boolea
   })
 }
 
+export class InterruptedPack extends Error {
+  constructor(message: string, readonly count: number, readonly save: () => Promise<void>) {
+    super(message)
+  }
+}
+
 export async function downloadPack(project: Project, pack: Pack, askForHost: (host: string) => Promise<void>) {
   if (get(downloading).total) return
   const headers = fetchHeaders()
@@ -185,15 +172,18 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
   if (!pack.products.length) throw new Error('Add an animation to the pack first.')
 
   const zip = new JSZip()
+  const archiveName = pack.name.replace(/\.zip$/i, '')
+  const products = pack.products.slice()
+  let completed = 0
   let stage = ''
   function showStage(label: string) {
     stage = label
     downloading.update((state) => ({ ...state, stage }))
   }
 
-  downloading.set({ ...idleDownload, total: pack.products.length })
+  downloading.set({ ...idleDownload, total: products.length })
   try {
-    for (const product of pack.products) {
+    for (const product of products) {
       showStage(`Requesting ${product.name}`)
       const preferences = product.projectOverride ? product.preferences : project.preferences
       const hash = product.details.gms_hash
@@ -243,7 +233,8 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
         let filename = product.name + ext
         for (let i = 2; zip.file(filename); i++) filename = `${product.name} (${i})${ext}`
         zip.file(filename, blob)
-        downloading.update((state) => ({ ...state, complete: state.complete + 1 }))
+        completed++
+        downloading.update((state) => ({ ...state, complete: completed }))
       } catch (error) {
         if (controller.signal.aborted) throw new Error('Timed out after 10 minutes.')
         throw error
@@ -256,9 +247,15 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
     const blob = await zip.generateAsync({ type: 'blob' }, ({ percent }) => {
       downloading.update((state) => ({ ...state, zip: Math.round(percent) }))
     })
-    saveAs(blob, /\.zip$/i.test(pack.name) ? pack.name : `${pack.name}.zip`)
+    saveAs(blob, `${archiveName}.zip`)
   } catch (error) {
-    throw new Error(`${stage} failed. ${error instanceof Error ? error.message : 'Please try again.'}`)
+    const reason = `${stage} failed. ${error instanceof Error ? error.message : 'Please try again.'}`
+    if (completed && completed < products.length) {
+      throw new InterruptedPack(`${reason} First unfinished clip: ${products[completed].name}.`, completed, async () => {
+        saveAs(await zip.generateAsync({ type: 'blob' }), `${archiveName}-partial.zip`)
+      })
+    }
+    throw new Error(reason)
   } finally {
     downloading.set(idleDownload)
   }

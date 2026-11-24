@@ -20,6 +20,7 @@
   import CaretIcon from '../icons/CaretIcon.svelte'
   import { viewProduct } from '../products'
   import {
+    InterruptedPack,
     addProduct,
     downloading,
     downloadPack,
@@ -133,12 +134,28 @@
     })
   }
 
+  let partial: InterruptedPack | null = null
+  let savingPartial = false
   let downloadError = ''
+  async function savePartial() {
+    if (!partial || savingPartial) return
+    savingPartial = true
+    try {
+      await partial.save()
+      partial = null
+    } catch {
+      downloadError = 'Firefox could not prepare the partial ZIP. Try saving it again.'
+    } finally {
+      savingPartial = false
+    }
+  }
   async function onClickDownloadPack() {
+    partial = null
     downloadError = ''
     try {
       await downloadPack(project, pack, askForHost)
     } catch (error) {
+      if (error instanceof InterruptedPack) partial = error
       downloadError = error instanceof Error ? error.message : 'Download failed. Please try again.'
     }
   }
@@ -186,7 +203,7 @@
       <Section>
         <Button
           block
-          disabled={$downloading.total > 0 || !pack.products.length}
+          disabled={savingPartial || $downloading.total > 0 || !pack.products.length}
           title={$downloading.total > 0 ? 'Download in progress' : ''}
           on:click={onClickDownloadPack}
         >
@@ -213,6 +230,11 @@
           {/if}
         {:else if downloadError}
           <div class="download-status" role="alert">{downloadError}</div>
+          {#if partial}
+            <Button block disabled={savingPartial} on:click={savePartial}>
+              {savingPartial ? 'Preparing partial ZIP...' : `Save partial ZIP (${partial.count} ${partial.count === 1 ? 'file' : 'files'})`}
+            </Button>
+          {/if}
         {/if}
       </Section>
       <Section>
