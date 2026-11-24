@@ -11,6 +11,8 @@ export enum MessageType {
   Download,
 }
 
+export const panelPortName = 'mixamo-batcher-panel'
+
 export type Message =
   | {
       type: MessageType.Init

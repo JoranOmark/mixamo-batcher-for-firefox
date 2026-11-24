@@ -18,11 +18,26 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
 /**
  * listen to custom events dispatched from xhr injection
  */
-window.addEventListener('mbu_Message', function (e: CustomEvent<Message>) {
-  chrome.runtime.sendMessage(e.detail)
+window.addEventListener('mbu_Message', function (e: CustomEvent<string>) {
+  // A string crosses Firefox's page/content-script boundary without an object wrapper.
+  if (typeof e.detail !== 'string') return
+  let message: Message
+  try {
+    message = JSON.parse(e.detail)
+  } catch {
+    return
+  }
+  if (!message) return
+  if (
+    message.type === MessageType.ProductFetched ||
+    message.type === MessageType.PrimaryUpdated ||
+    message.type === MessageType.StreamFetched
+  ) {
+    chrome.runtime.sendMessage(message)
+  }
 
-  if (e.detail.type === MessageType.ProductsFetched && viewProduct) {
-    const index = e.detail.payload.indexOf(viewProduct.id)
+  if (message.type === MessageType.ProductsFetched && viewProduct && Array.isArray(message.payload)) {
+    const index = message.payload.indexOf(viewProduct.id)
 
     if (index >= 0) {
       setTimeout(() => clickOnViewProduct(index), 500)

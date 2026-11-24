@@ -1,5 +1,21 @@
 import { updateQueryParams } from './common'
-import { Message, MessageType } from './types'
+import { Message, MessageType, panelPortName } from './types'
+
+const panels = new Map<number, chrome.runtime.Port>()
+
+chrome.runtime.onConnect.addListener((port) => {
+  const tabId = port.sender?.tab?.id
+  if (
+    port.name !== panelPortName ||
+    port.sender?.url !== chrome.runtime.getURL('index.html') ||
+    tabId == null
+  ) return
+
+  panels.set(tabId, port)
+  port.onDisconnect.addListener(() => {
+    if (panels.get(tabId) === port) panels.delete(tabId)
+  })
+})
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
   if (message.type === MessageType.Init || message.type === MessageType.ViewProduct) {
@@ -25,6 +41,13 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
       }
     })
     return true
+  }
+
+  const isPanelUpdate = message.type === MessageType.ProductFetched ||
+    message.type === MessageType.StreamFetched ||
+    message.type === MessageType.PrimaryUpdated
+  if (isPanelUpdate && sender.frameId === 0 && sender.tab?.id != null) {
+    panels.get(sender.tab.id)?.postMessage(message)
   }
 
   if (message.type === MessageType.FetchNextPage && sender.tab) {

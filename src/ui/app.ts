@@ -1,8 +1,8 @@
 import { saveAs } from 'file-saver'
 import localforage from 'localforage'
 import { get, writable } from 'svelte/store'
-import { Active, Character, ExportFile, Message, MessageType, Product, Project } from '../types'
-import { products } from './products'
+import { Active, Character, ExportFile, Message, MessageType, Product, Project, panelPortName } from '../types'
+import { products, syncStreamParamsToProduct } from './products'
 import { projects } from './projects'
 
 export const accessToken = writable<string | null>(null)
@@ -54,13 +54,17 @@ const restored = Promise.all([
 })
 
 export function initialize() {
-  chrome.runtime.onMessage.addListener((message: Message) => {
+  const panel = chrome.runtime.connect({ name: panelPortName })
+  panel.onMessage.addListener((message: Message) => {
     // console.log({ ...message, type: MessageType[message.type].toString() })
     if (message.type === MessageType.ProductFetched) {
       selectedProduct.set(message.payload)
       products.set(message.payload)
     } else if (message.type === MessageType.StreamFetched) {
-      // syncStreamParamsToProduct(message.payload)
+      const { projectId, packId } = get(active)
+      const project = projectId && projects.get(projectId)
+      const pack = project && packId && project.packs[packId]
+      if (project && pack) syncStreamParamsToProduct(project, pack, message.payload)
     } else if (message.type === MessageType.PrimaryUpdated) {
       fetchPrimary().catch(() => selectedCharacter.set(null))
     }

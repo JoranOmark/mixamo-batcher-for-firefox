@@ -1,8 +1,7 @@
 <script lang="ts">
   import { zip } from 'lodash'
-  import { onMount } from 'svelte'
   import { derived } from 'svelte/store'
-  import { Message, MessageType, Pack, Product, Project } from '../../types'
+  import { Pack, Product, Project } from '../../types'
   import { active, selectedCharacter, selectedProduct } from '../app'
   import Breadcrumbs from '../components/Breadcrumbs.svelte'
   import Button from '../components/Button.svelte'
@@ -19,7 +18,7 @@
   import Sticky from '../components/Sticky.svelte'
   import Title from '../components/Title.svelte'
   import CaretIcon from '../icons/CaretIcon.svelte'
-  import { syncStreamParamsToProduct, viewProduct } from '../products'
+  import { viewProduct } from '../products'
   import {
     addProduct,
     downloading,
@@ -101,23 +100,9 @@
     }
   }
 
-  function onMessage(message: Message) {
-    if (message.type === MessageType.StreamFetched) {
-      syncStreamParamsToProduct(project, pack, message.payload)
-    }
-  }
-
   function onClickDownloadPack() {
     downloadPack(project, pack)
   }
-
-  onMount(() => {
-    chrome.runtime.onMessage.addListener(onMessage)
-
-    return () => {
-      chrome.runtime.onMessage.removeListener(onMessage)
-    }
-  })
 </script>
 
 <Main>
