@@ -4,9 +4,9 @@ import { get, writable } from 'svelte/store'
 import { Active, Character, ExportFile, Message, MessageType, Product, Project } from '../types'
 import { products } from './products'
 import { projects } from './projects'
-import { sendMessageToActiveTab } from './tabs'
 
 export const accessToken = writable<string | null>(null)
+export const sessionStatus = writable('Checking Mixamo session…')
 
 export const selectedCharacter = writable<Character | null>(null)
 
@@ -55,9 +55,7 @@ Promise.all([projects.loading, products.loading]).then(() => {
 export function initialize() {
   chrome.runtime.onMessage.addListener((message: Message) => {
     // console.log({ ...message, type: MessageType[message.type].toString() })
-    if (message.type === MessageType.SetAccessToken) {
-      accessToken.set(message.payload)
-    } else if (message.type === MessageType.ProductFetched) {
+    if (message.type === MessageType.ProductFetched) {
       selectedProduct.set(message.payload)
       products.set(message.payload)
     } else if (message.type === MessageType.StreamFetched) {
@@ -67,7 +65,15 @@ export function initialize() {
     }
   })
 
-  sendMessageToActiveTab({ type: MessageType.Init })
+  chrome.runtime.sendMessage({ type: MessageType.Init }, (response) => {
+    if (chrome.runtime.lastError || !response?.connected) {
+      sessionStatus.set('Could not connect to the Mixamo tab. Reload the page to try again.')
+      return
+    }
+
+    accessToken.set(response.token || null)
+    sessionStatus.set('Not logged in')
+  })
 }
 
 export function importData(file?: File) {

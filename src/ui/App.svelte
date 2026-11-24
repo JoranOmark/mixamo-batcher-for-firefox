@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { accessToken, active, initialize } from './app'
+  import { accessToken, active, initialize, sessionStatus } from './app'
   import { projects } from './projects'
   import Home from './views/Home.svelte'
   import Pack from './views/Pack.svelte'
@@ -33,7 +33,7 @@
   {:else}
     <Home />
   {/if}
-{:else}Not logged in{/if}
+{:else}{$sessionStatus}{/if}
 
 <style>
   :global * {

@@ -5,12 +5,9 @@ let viewProduct: Product | null
 /**
  * listen to events sent from extension
  */
-chrome.runtime.onMessage.addListener((message: Message) => {
+chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   if (message.type === MessageType.Init) {
-    chrome.runtime.sendMessage({
-      type: MessageType.SetAccessToken,
-      payload: localStorage.access_token,
-    })
+    sendResponse(localStorage.getItem('access_token'))
   } else if (message.type === MessageType.ViewProduct) {
     viewProduct = message.payload
     injectProductScript(viewProduct)
