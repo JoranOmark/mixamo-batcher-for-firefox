@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 import qs from 'qs'
 import { get, writable } from 'svelte/store'
 import { ExportProductRequest, ExportProductResponse, Pack, Product, Project } from '../types'
-import { active, fetchHeaders, selectedCharacter, selectedProduct } from './app'
+import { active, fetchHeaders, fetchPrimary, selectedCharacter, selectedProduct } from './app'
 import { defaultPack, defaultPreferences, defaultProject } from './constants'
 import { viewProduct } from './products'
 import { createStore } from './store'
@@ -28,20 +28,18 @@ export function removeProject(project: Project) {
   projects.remove(project)
 }
 
-export function createPack(project: Project, name: string) {
-  const character = get(selectedCharacter)
-
-  if (project && character) {
-    const pack: Pack = defaultPack(name, character)
-
-    project.packs = { ...project.packs, [pack.id]: pack }
-
-    active.update((s) => ({ ...s, packId: pack.id, productId: pack.products[0]?.id }))
-
-    viewProduct(pack.products[0])
-
-    return pack
+export async function createPack(project: Project, name: string) {
+  const character = await fetchPrimary()
+  if (get(active).projectId !== project.id || !projects.get(project.id)) {
+    return
   }
+
+  const pack = defaultPack(name, character)
+  await projects.save({ ...project, packs: { ...project.packs, [pack.id]: pack } })
+  if (get(active).projectId !== project.id) return pack
+  active.update((s) => ({ ...s, packId: pack.id, productId: pack.products[0].id }))
+  viewProduct(pack.products[0])
+  return pack
 }
 
 export function duplicatePack(project: Project, pack: Pack, name: string) {

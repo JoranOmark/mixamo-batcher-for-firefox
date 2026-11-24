@@ -45,6 +45,11 @@ export function createStore<T extends { id: string }>(name: string) {
     persistent.setItem(item.id, item)
   }
 
+  async function save(item: T) {
+    await persistent.setItem(item.id, item)
+    store.update((items) => ({ ...items, [item.id]: item }))
+  }
+
   function remove(item: T) {
     store.update((s) => {
       const { [item.id]: _, ...next } = s
@@ -62,6 +67,7 @@ export function createStore<T extends { id: string }>(name: string) {
     all,
     get,
     set,
+    save,
     remove,
   }
 }

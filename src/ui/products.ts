@@ -1,18 +1,14 @@
-import { updateQueryParams } from '../common'
 import { MessageType, Pack, Product, Project, Stream } from '../types'
 import { projects } from './projects'
 import { createStore } from './store'
-import { sendMessageToActiveTab } from './tabs'
 
 export const products = createStore<Product>('products')
 
-export async function viewProduct(product: Product) {
-  sendMessageToActiveTab({
+export function viewProduct(product: Product) {
+  chrome.runtime.sendMessage({
     type: MessageType.ViewProduct,
     payload: product,
   })
-
-  await updateQueryParams(product.description)
 }
 
 export function syncStreamParamsToProduct(project: Project, pack: Pack, stream: Stream) {

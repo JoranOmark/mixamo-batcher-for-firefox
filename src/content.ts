@@ -11,6 +11,7 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
   } else if (message.type === MessageType.ViewProduct) {
     viewProduct = message.payload
     injectProductScript(viewProduct)
+    sendResponse(true)
   }
 })
 

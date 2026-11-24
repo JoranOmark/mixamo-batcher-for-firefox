@@ -23,6 +23,8 @@
   let newPackWarning: boolean = false
 
   let newPackRef: HTMLInputElement
+  let creatingPack = false
+  let packError = ''
 
   let showSettings: boolean = false
 
@@ -38,12 +40,22 @@
     }
   }
 
-  function onClickCreatePack() {
-    if (newPackName === '') {
+  async function onClickCreatePack() {
+    if (creatingPack) return
+    packError = ''
+    if (!newPackName.trim()) {
       newPackWarning = true
       newPackRef.focus()
-    } else {
-      createPack(project, newPackName)
+      return
+    }
+
+    creatingPack = true
+    try {
+      await createPack(project, newPackName.trim())
+    } catch (error) {
+      packError = error instanceof Error ? error.message : 'Could not load the current character.'
+    } finally {
+      creatingPack = false
     }
   }
 
@@ -92,7 +104,10 @@
           warning={newPackWarning}
           placeholder="New Pack Name"
         />
-        <Button block on:click={onClickCreatePack}>Create Pack</Button>
+        <Button block disabled={creatingPack} on:click={onClickCreatePack}>
+          {creatingPack ? 'Loading character…' : 'Create Pack'}
+        </Button>
+        {#if packError}<p role="alert">{packError}</p>{/if}
       </Section>
       <Section>
         <Heading>Packs</Heading>
