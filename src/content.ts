@@ -10,7 +10,7 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
     sendResponse(localStorage.getItem('access_token'))
   } else if (message.type === MessageType.ViewProduct) {
     viewProduct = message.payload
-    injectProductScript(viewProduct)
+    window.dispatchEvent(new CustomEvent('mbu_ViewProduct', { detail: JSON.stringify(viewProduct) }))
     sendResponse(true)
   }
 })
@@ -52,26 +52,12 @@ window.addEventListener('mbu_Message', function (e: CustomEvent<string>) {
 } as EventListener)
 
 /**
- * This is how we set the animation slider values when clicking an animation in a pack
- *
- * We inject the product into the window so the params can be used to override the params that
- * are returned with a product api response
- */
-function injectProductScript(product: Product | null) {
-  const script = document.createElement('script')
-  script.type = 'text/javascript'
-  script.text = `window.mbu_Product = ${JSON.stringify(product)}`
-  document.body.appendChild(script)
-  setTimeout(() => document.body.removeChild(script), 0)
-}
-
-/**
  * We store the page results and click on the tile which corresponds to the current `viewProduct`
  */
 function clickOnViewProduct(index: number) {
   if (index >= 0) {
     const el = document.querySelectorAll('.product li')[index]
-    el.dispatchEvent(new Event('click', { bubbles: true }))
+    el?.dispatchEvent(new Event('click', { bubbles: true }))
   }
 }
 
@@ -98,7 +84,20 @@ function createIframe() {
     }
   }
 
-  setInterval(setIframeHeight, 100)
+  let observed: Element | null = null
+  const resize = new ResizeObserver(setIframeHeight)
+  function observeSidebar() {
+    const sidebar = document.querySelector('.sidebar-list > *')
+    if (sidebar === observed) return
+    resize.disconnect()
+    observed = sidebar
+    if (sidebar) resize.observe(sidebar)
+    setIframeHeight()
+  }
+  new MutationObserver(observeSidebar).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+  window.addEventListener('resize', setIframeHeight)
+  setIframeHeight()
+  observeSidebar()
 
   document.body.appendChild(iframe)
 }

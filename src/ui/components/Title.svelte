@@ -3,7 +3,7 @@
 </script>
 
 <div>
-  <Heading>Mixamo Batcher</Heading>
+  <Heading>Animation Pack Exporter for Mixamo</Heading>
 </div>
 
 <style>

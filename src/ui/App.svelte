@@ -43,7 +43,7 @@
 
   :global html {
     color: #333;
-    font-family: Ubuntu, Arial, sans-serif;
+    font-family: system-ui, Arial, sans-serif;
     height: 100%;
   }
 

@@ -87,21 +87,25 @@ export function initialize() {
   })
 }
 
-export function importData(file?: File) {
-  if (file) {
-    file
-      .text()
-      .then((text) => JSON.parse(text) as ExportFile)
-      .then((data) => {
-        Object.values(data.projects).forEach((p) => {
-          if (
-            !projects.get(p.id) ||
-            confirm(`Are you sure you want to overwrite the project "${p.name}"`)
-          ) {
-            projects.set(p)
-          }
-        })
-      })
+export async function importData(file?: File) {
+  if (!file) return
+  const data: ExportFile = JSON.parse(await file.text())
+  const record = (value: unknown) => value !== null && typeof value === 'object' && !Array.isArray(value)
+  if (data?.version !== 1 || !record(data.projects)) throw new Error('Invalid project backup')
+  const entries = Object.entries(data.projects)
+  for (const [id, project] of entries) {
+    if (!project || project.id !== id || typeof project.name !== 'string' || !record(project.packs) || !record(project.preferences)) {
+      throw new Error('Invalid project in backup')
+    }
+    for (const [packId, pack] of Object.entries(project.packs)) {
+      if (!pack || pack.id !== packId || typeof pack.name !== 'string' || typeof pack.character?.id !== 'string' ||
+        !Array.isArray(pack.products) || !pack.products.every(p => typeof p?.id === 'string' && typeof p.name === 'string' && Array.isArray(p.details?.gms_hash?.params))) {
+        throw new Error('Invalid animation pack in backup')
+      }
+    }
+  }
+  for (const [, project] of entries) {
+    if (!projects.get(project.id) || confirm(`Overwrite the project "${project.name}"?`)) await projects.save(project)
   }
 }
 
