@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { zip } from 'lodash'
   import { derived } from 'svelte/store'
   import { Pack, Product, Project } from '../../types'
   import { active, selectedCharacter, selectedProduct } from '../app'
@@ -100,8 +99,14 @@
     }
   }
 
-  function onClickDownloadPack() {
-    downloadPack(project, pack)
+  let downloadError = ''
+  async function onClickDownloadPack() {
+    downloadError = ''
+    try {
+      await downloadPack(project, pack)
+    } catch (error) {
+      downloadError = error instanceof Error ? error.message : 'Download failed. Please try again.'
+    }
   }
 </script>
 
@@ -147,7 +152,7 @@
       <Section>
         <Button
           block
-          disabled={$downloading.total > 0}
+          disabled={$downloading.total > 0 || !pack.products.length}
           title={$downloading.total > 0 ? 'Download in progress' : ''}
           on:click={onClickDownloadPack}
         >
@@ -155,12 +160,17 @@
             {#if $downloading.zip > 0}
               Preparing Zip ({$downloading.zip}%)
             {:else}
-              Processing ({$downloading.complete} / {$downloading.total})
+              {$downloading.complete} / {$downloading.total} files ready
             {/if}
           {:else}
             Download Pack
           {/if}
         </Button>
+        {#if $downloading.total > 0}
+          <div class="download-status" role="status">{$downloading.stage}</div>
+        {:else if downloadError}
+          <div class="download-status" role="alert">{downloadError}</div>
+        {/if}
       </Section>
       <Section>
         <Heading>Add Animations</Heading>
@@ -236,6 +246,11 @@
 </Main>
 
 <style>
+  .download-status {
+    padding-top: 6px;
+    overflow-wrap: anywhere;
+  }
+
   .center-pad {
     padding: 10px 10px 0 10px;
     text-align: center;
