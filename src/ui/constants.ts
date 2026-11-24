@@ -4,7 +4,7 @@ import { Character, Pack, PackProduct, Preferences, Project } from '../types'
 export function defaultProject(name: string = ''): Project {
   return {
     id: nanoid(),
-    inplace: false,
+    motionMode: 'inPlace',
     preferences: defaultPreferences(),
     packs: {},
     name,

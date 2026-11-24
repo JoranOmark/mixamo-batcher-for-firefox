@@ -1,6 +1,33 @@
-# Introduction
+# Mixamo Batcher for Firefox
 
-This fork is for developing a Firefox version of Mixamo Batcher.
+## Try the Firefox development build
+
+1. Download or clone this repository. In its folder, use Node.js and pnpm 6.35.1 to run `pnpm install --frozen-lockfile` and then `pnpm build`.
+2. In Firefox, open `about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and select `dist/manifest.json`. Load it again after restarting Firefox. After rebuilding, click **Reload** beside the add-on.
+3. Open or refresh [Mixamo](https://www.mixamo.com/), sign in, and preview a character. In the Batcher panel, name a project and click **Create Project**. Name a pack and click **Create Pack**.
+4. Preview an animation on Mixamo. When its name appears under **Add Animations**, click **Add To Pack**. Click **Download Pack** to save one ZIP containing the pack’s files.
+
+## Export settings and Godot
+
+Under **Show Project Settings → Download Preferences**, choose the defaults for clips in every pack in that project. To customize one clip, expand it under **Pack Animations** and enable **Override Project Preferences**. The override has its own set of download settings.
+
+| Setting | New project | Other choices |
+| --- | --- | --- |
+| Format | FBX Binary | FBX ASCII, FBX for Unity, FBX 7.4, FBX 6.1, Collada |
+| Frames per second | 30 | 24 or 60 |
+| Keyframe reduction | None | Uniform or Non-Uniform |
+| Skin | Without Skin | With Skin |
+| In Place | On for supported clips | Off or Use saved Mixamo preview |
+
+Each new pack includes a **T-Pose** with **With Skin** selected as a clip override. For Godot, start with that file for the character mesh and skeleton. Unzip the pack and use the remaining FBX files as animations for the same rig. Use **In Place** for walks and runs when your movement code drives the character. Choose **Off** for a clip such as a lunge when you want the authored movement. See [Godot’s root motion guide](https://docs.godotengine.org/en/stable/tutorials/animation/animation_tree.html#root-motion).
+
+Older projects and their JSON backups use **Use saved Mixamo preview** until you change the project setting. Clips that do not support In Place keep the motion supplied by Mixamo.
+
+## Download permissions
+
+The add-on uses Mixamo for selection and export and has access to two known Mixamo storage hosts. If Mixamo returns a file on a different HTTPS host, the pack pauses and shows its hostname. Click **Review download permission**, choose **Allow host** in the tab that opens, then approve the Firefox prompt to continue the same pack. Firefox can reuse that grant for future downloads. **Cancel download** stops the pack. File requests omit cookies and the Adobe sign-in token.
+
+## About the project
 
 **Mixamo Batcher allows you to create and save animation packs, and download them as an archive file.**
 
@@ -96,7 +123,7 @@ Some basic chrome extension functionality is also used, e.g. updating the tab wh
 - Data is saved in browser localStorage. Uninstalling the extension or clearing extension data will result in data loss. There is an import/export feature to get around this. Depending on popularity a remote data solution could be provided.
 - Application functionality is highly dependent on the structure of Mixamo. If the website or APIs change drastically, the extension will most likely break in some way.
 - Selecting an animation from a pack may load up more than one page of animations. If the target animation is not on the first page it won't be selected.
-- [Max zip size of 2gb](https://chromium.googlesource.com/chromium/src/+/HEAD/storage/browser/blob/README.md#blob-storage-limits)
+- ZIP creation keeps the pack in browser memory. Split a large pack if Firefox runs out of memory.
 
 # License
 

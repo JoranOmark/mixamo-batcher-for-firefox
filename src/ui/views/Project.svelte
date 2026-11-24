@@ -85,11 +85,17 @@
       <Section>
         <Heading>Download Preferences</Heading>
         <div class="animation-settings">
-          <Preferences
-            showInplace
-            bind:inplace={project.inplace}
-            bind:preferences={project.preferences}
-          />
+          <label>
+            In Place (supported animations)
+            <select class="input-sm form-control" value={project.motionMode || 'preview'}
+              on:change={(event) => project.motionMode = event.currentTarget.value}>
+              <option value="inPlace">On</option>
+              <option value="original">Off</option>
+              <option value="preview">Use saved Mixamo preview</option>
+            </select>
+          </label>
+          <p>Use On when game code moves your character. Use Off to keep movement built into the clip.</p>
+          <Preferences bind:preferences={project.preferences} />
         </div>
       </Section>
       <Section>

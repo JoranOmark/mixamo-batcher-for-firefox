@@ -14,6 +14,7 @@
     "https://mixamo-storage-prod.s3-us-west-2.amazonaws.com/*",
     "https://mixamo-storage-prod.s3.us-west-2.amazonaws.com/*"
   ],
+  "optional_permissions": ["https://*/*"],
   "background": {
     "scripts": ["background.js"]
   },
@@ -31,6 +32,6 @@
       "run_at": "document_start"
     }
   ],
-  "content_security_policy": "script-src 'self' https://ssl.google-analytics.com; object-src 'self'",
+  "content_security_policy": "script-src 'self'; object-src 'self'",
   "web_accessible_resources": ["index.html", "xhr.js"]
 }

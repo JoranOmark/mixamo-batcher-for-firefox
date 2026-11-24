@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download permission · Mixamo Batcher</title>
+  <style>
+    :root { color-scheme: light dark; font: 1rem/1.5 system-ui, sans-serif; }
+    main { max-width: 32rem; margin: 10vh auto; padding: 1rem; }
+    strong { overflow-wrap: anywhere; }
+    button { font: inherit; margin: .25rem .5rem .25rem 0; padding: .3rem .85rem; }
+  </style>
+  <script defer src="permission.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Allow this download host?</h1>
+    <p>Mixamo sent your animation file from <strong id="host"></strong>. Allow access to download files from this host for your packs.</p>
+    <button id="allow" type="button">Allow host</button>
+    <button id="cancel" type="button">Cancel</button>
+    <p role="alert" id="error"></p>
+  </main>
+</body>
+</html>

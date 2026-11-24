@@ -18,6 +18,38 @@ chrome.runtime.onConnect.addListener((port) => {
 })
 
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  if (message.type === MessageType.CheckDownloadHost || message.type === MessageType.ReviewDownloadHost) {
+    if (sender.url !== chrome.runtime.getURL('index.html') || sender.tab?.id == null) return
+    const host = message.payload
+    let url: URL
+    try {
+      url = new URL('https://' + host)
+    } catch {
+      sendResponse(false)
+      return
+    }
+    if (url.hostname !== host || host.includes('*')) {
+      sendResponse(false)
+      return
+    }
+    const permission = { origins: [url.origin + '/*'] }
+    const check = () => chrome.permissions.contains(permission, (granted) => {
+      sendResponse(!chrome.runtime.lastError && granted)
+    })
+    if (message.type === MessageType.CheckDownloadHost) check()
+    else {
+      chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') + '#' + encodeURIComponent(host) }, (tab) => {
+        if (chrome.runtime.lastError || tab?.id == null) { sendResponse(false); return }
+        const onClose = (id: number) => {
+          if (id !== tab.id) return
+          chrome.tabs.onRemoved.removeListener(onClose)
+          check()
+        }
+        chrome.tabs.onRemoved.addListener(onClose)
+      })
+    }
+    return true
+  }
   if (message.type === MessageType.Init || message.type === MessageType.ViewProduct) {
     if (sender.url !== chrome.runtime.getURL('index.html') || sender.tab?.id == null) {
       return

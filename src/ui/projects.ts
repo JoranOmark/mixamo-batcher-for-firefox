@@ -3,7 +3,7 @@ import JSZip from 'jszip'
 import { nanoid } from 'nanoid'
 import qs from 'qs'
 import { get, writable } from 'svelte/store'
-import { ExportProductRequest, ExportProductResponse, Pack, Product, Project } from '../types'
+import { MessageType, ExportProductRequest, ExportProductResponse, Pack, Product, Project } from '../types'
 import { active, fetchHeaders, fetchPrimary, selectedCharacter, selectedProduct } from './app'
 import { defaultPack, defaultPreferences, defaultProject } from './constants'
 import { viewProduct } from './products'
@@ -167,7 +167,18 @@ async function monitorDownload(uuid: string, options: RequestInit): Promise<stri
   }
 }
 
-export async function downloadPack(project: Project, pack: Pack) {
+export function downloadHostAccess(host: string, review = false): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const type = review ? MessageType.ReviewDownloadHost : MessageType.CheckDownloadHost
+    chrome.runtime.sendMessage({ type, payload: host }, (allowed) => {
+      const error = chrome.runtime.lastError
+      if (error) reject(new Error(error.message))
+      else resolve(allowed === true)
+    })
+  })
+}
+
+export async function downloadPack(project: Project, pack: Pack, askForHost: (host: string) => Promise<void>) {
   if (get(downloading).total) return
   const headers = fetchHeaders()
   if (!headers) throw new Error('Reload Mixamo to reconnect your session.')
@@ -186,16 +197,23 @@ export async function downloadPack(project: Project, pack: Pack) {
       showStage(`Requesting ${product.name}`)
       const preferences = product.projectOverride ? product.preferences : project.preferences
       const hash = product.details.gms_hash
+      let inplace = hash.inplace
+      if (product.details.supports_inplace) {
+        if (product.projectOverride) inplace = product.inplaceOverride ?? hash.inplace
+        else if (project.motionMode === 'inPlace') inplace = true
+        else if (project.motionMode === 'original') inplace = false
+      }
       const body: ExportProductRequest = {
         character_id: pack.character.id,
         product_name: product.name,
         preferences,
-        gms_hash: [{ ...hash, params: hash.params.map((param) => param[1]).join(',') }],
+        gms_hash: [{ ...hash, inplace, params: hash.params.map((param) => param[1]).join(',') }],
         type: 'Motion',
       }
 
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000)
+      const startTimeout = () => setTimeout(() => controller.abort(), 10 * 60 * 1000)
+      let timeout = startTimeout()
       try {
         const options: RequestInit = { headers, credentials: 'include', signal: controller.signal }
         const response = await checkedFetch('https://www.mixamo.com/api/v1/animations/export', {
@@ -208,6 +226,15 @@ export async function downloadPack(project: Project, pack: Pack) {
 
         showStage(`Waiting for Mixamo to export ${product.name}`)
         const url = new URL(await monitorDownload(job.uuid, options))
+        if (url.protocol !== 'https:' || url.username || url.password) {
+          throw new Error('Mixamo returned an invalid download link.')
+        }
+        if (!(await downloadHostAccess(url.hostname))) {
+          clearTimeout(timeout)
+          showStage(`Waiting for permission to download ${product.name}`)
+          await askForHost(url.hostname)
+          timeout = startTimeout()
+        }
         showStage(`Fetching ${product.name} from ${url.hostname}`)
         const file = await checkedFetch(url.href, { credentials: 'omit', signal: controller.signal })
         const blob = await file.blob()
