@@ -98,6 +98,19 @@ export interface GmsHashStream extends Omit<GmsHash, 'params'> {
   params: string
 }
 
+export interface MotionDetails {
+  motions?: never
+  supports_inplace: boolean
+  loopable: boolean
+  default_frame_length: number
+  duration: number
+  gms_hash: GmsHash
+}
+
+export interface CatalogMotion extends MotionDetails {
+  name: string
+}
+
 export interface Product {
   id: string
   type: string
@@ -106,14 +119,14 @@ export interface Product {
   character_type: string
   name: string
   motion_id: string
-  details: {
-    supports_inplace: boolean
-    loopable: boolean
-    default_frame_length: number
-    duration: number
-    gms_hash: GmsHash
-  }
+  details: MotionDetails | { motions: CatalogMotion[]; gms_hash?: undefined; supports_inplace?: undefined }
   source: string
+}
+
+export function productMotions(product: Product): CatalogMotion[] {
+  const details = product.details
+  if (details && 'motions' in details) return Array.isArray(details.motions) ? details.motions : []
+  return details?.gms_hash ? [{ ...details, name: product.name }] : []
 }
 
 export interface PackProduct extends Product {

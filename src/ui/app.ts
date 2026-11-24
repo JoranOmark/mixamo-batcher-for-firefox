@@ -1,7 +1,7 @@
 import { saveAs } from 'file-saver'
 import localforage from 'localforage'
 import { get, writable } from 'svelte/store'
-import { Active, Character, ExportFile, Message, MessageType, Product, Project, panelPortName } from '../types'
+import { Active, Character, ExportFile, Message, MessageType, Product, Project, panelPortName, productMotions } from '../types'
 import { products, syncStreamParamsToProduct } from './products'
 import { projects } from './projects'
 
@@ -99,7 +99,11 @@ export async function importData(file?: File) {
     }
     for (const [packId, pack] of Object.entries(project.packs)) {
       if (!pack || pack.id !== packId || typeof pack.name !== 'string' || typeof pack.character?.id !== 'string' ||
-        !Array.isArray(pack.products) || !pack.products.every(p => typeof p?.id === 'string' && typeof p.name === 'string' && Array.isArray(p.details?.gms_hash?.params))) {
+        !Array.isArray(pack.products) || !pack.products.every(p => {
+          if (typeof p?.id !== 'string' || typeof p.name !== 'string') return false
+          const motions = productMotions(p)
+          return motions.length > 0 && motions.every(m => typeof m?.name === 'string' && Array.isArray(m.gms_hash?.params))
+        })) {
         throw new Error('Invalid animation pack in backup')
       }
     }

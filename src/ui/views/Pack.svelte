@@ -242,10 +242,13 @@
         {#if $selectedProduct}
           <div class="center-pad">
             <div>{$selectedProduct.name}</div>
+            {#if $selectedProduct.type === 'MotionPack'}
+              <div>{$selectedProduct.details?.motions?.length || 0} clips</div>
+            {/if}
           </div>
           <Button
             block
-            disabled={$productExists}
+            disabled={$productExists || ($selectedProduct.type === 'MotionPack' && !$selectedProduct.details?.motions?.length)}
             title={$productExists ? 'Animation already exists in this pack' : ''}
             on:click={onClickAddProduct}
           >
@@ -289,7 +292,7 @@
                   {#if product.projectOverride}
                     <div class="animation-settings">
                       <Heading>Download Preferences</Heading>
-                      {#if product.details.supports_inplace}
+                      {#if product.details?.supports_inplace && product.details.gms_hash}
                         <label>
                           <input type="checkbox"
                             checked={product.inplaceOverride ?? product.details.gms_hash.inplace}
@@ -301,9 +304,6 @@
                     </div>
                   {/if}
                   <Button block on:click={() => onClickRemoveProduct(product)}>Remove</Button>
-                  <pre style="display:none">
-                    <code>{JSON.stringify(product.details.gms_hash, null, 2)}</code>
-                  </pre>
                 </div>
               {/if}
             </li>

@@ -27,8 +27,9 @@ function onResponse(this: XMLHttpRequest) {
   if (!path || (this.responseType && this.responseType !== 'text' && this.responseType !== 'json')) return
   const payload = this.responseType === 'json' ? this.response : parseJson(this.responseText)
   if (!payload) return
-  if (path.startsWith('/api/v1/products/') && typeof payload.id === 'string' && payload.details?.gms_hash) {
-    if (savedProduct?.id === payload.id && savedProduct) {
+  if (path.startsWith('/api/v1/products/') && typeof payload.id === 'string' &&
+      (payload.details?.gms_hash || payload.type === 'MotionPack')) {
+    if (savedProduct?.id === payload.id && savedProduct?.details.gms_hash && payload.details?.gms_hash) {
       payload.details.gms_hash = savedProduct.details.gms_hash
       savedProduct = null
       const text = JSON.stringify(payload)

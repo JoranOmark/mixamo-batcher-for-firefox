@@ -14,18 +14,19 @@ export function viewProduct(product: Product) {
 export function syncStreamParamsToProduct(project: Project, pack: Pack, stream: Stream) {
   const gms = stream.gms_hash[0]
 
-  if (pack && gms) {
+  if (pack && gms && stream.gms_hash.length === 1) {
     pack.products = pack.products.map((p) => {
-      if (p.details.gms_hash['model-id'] === gms['model-id']) {
-        p.details.gms_hash['arm-space'] = gms['arm-space']
-        p.details.gms_hash['inplace'] = gms['inplace']
-        p.details.gms_hash['trim'] = gms['trim']
+      const hash = p.details?.gms_hash
+      if (hash && hash['model-id'] === gms['model-id']) {
+        hash['arm-space'] = gms['arm-space']
+        hash.inplace = gms.inplace
+        hash.trim = gms.trim
 
         gms.params
           .split(',')
           .map(parseFloat)
           .forEach((val, i) => {
-            p.details.gms_hash.params[i][1] = val
+            if (hash.params[i]) hash.params[i][1] = val
           })
       }
 

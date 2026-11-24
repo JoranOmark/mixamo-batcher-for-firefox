@@ -1,3 +1,7 @@
+# 1.3.1 — Catalog pack exports
+
+- Add Mixamo catalog packs to a batch and export each included motion as a named file. Saved catalog packs use the same export path.
+
 # 1.3.0 — Desktop Firefox release
 
 - Export selected packs sequentially, approve additional file hosts individually and save completed clips after an interruption.

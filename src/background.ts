@@ -59,7 +59,8 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
     if (message.type === MessageType.ViewProduct) {
       chrome.tabs.sendMessage(sender.tab.id, message, { frameId: 0 }, (ready) => {
         if (!chrome.runtime.lastError && ready) {
-          updateQueryParams(tab, message.payload.description)
+          const product = message.payload
+          updateQueryParams(tab, product.type === 'MotionPack' ? product.name : product.description)
         }
       })
       return
