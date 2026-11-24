@@ -2,7 +2,7 @@ import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import { nanoid } from 'nanoid'
 import { get, writable } from 'svelte/store'
-import { MessageType, ExportProductRequest, ExportProductResponse, Pack, Product, Project } from '../types'
+import { MessageType, ExportProductRequest, ExportProductResponse, Pack, Product, Project, productMotions } from '../types'
 import { active, fetchHeaders, fetchPrimary, selectedCharacter, selectedProduct } from './app'
 import { defaultPack, defaultPreferences, defaultProject } from './constants'
 import { viewProduct } from './products'
@@ -173,7 +173,11 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
 
   const zip = new JSZip()
   const archiveName = pack.name.replace(/\.zip$/i, '')
-  const products = pack.products.slice()
+  const clips = pack.products.flatMap(product => {
+    const motions = productMotions(product)
+    if (!motions.length) throw new Error(`No motion data for ${product.name}. Select it in Mixamo and add it again.`)
+    return motions.map(motion => ({ motion, product }))
+  })
   let completed = 0
   let stage = ''
   function showStage(label: string) {
@@ -181,21 +185,22 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
     downloading.update((state) => ({ ...state, stage }))
   }
 
-  downloading.set({ ...idleDownload, total: products.length })
+  downloading.set({ ...idleDownload, total: clips.length })
   try {
-    for (const product of products) {
-      showStage(`Requesting ${product.name}`)
+    for (const { motion, product } of clips) {
+      showStage(`Requesting ${motion.name}`)
       const preferences = product.projectOverride ? product.preferences : project.preferences
-      const hash = product.details.gms_hash
+      const hash = motion.gms_hash
+      if (!hash || !Array.isArray(hash.params)) throw new Error('Mixamo returned incomplete motion data.')
       let inplace = hash.inplace
-      if (product.details.supports_inplace) {
+      if (motion.supports_inplace) {
         if (product.projectOverride) inplace = product.inplaceOverride ?? hash.inplace
         else if (project.motionMode === 'inPlace') inplace = true
         else if (project.motionMode === 'original') inplace = false
       }
       const body: ExportProductRequest = {
         character_id: pack.character.id,
-        product_name: product.name,
+        product_name: motion.name,
         preferences,
         gms_hash: [{ ...hash, inplace, params: hash.params.map((param) => param[1]).join(',') }],
         type: 'Motion',
@@ -214,24 +219,24 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
         const job: ExportProductResponse = await response.json()
         if (!job.uuid) throw new Error('Mixamo returned no export ID.')
 
-        showStage(`Waiting for Mixamo to export ${product.name}`)
+        showStage(`Waiting for Mixamo to export ${motion.name}`)
         const url = new URL(await monitorDownload(job.uuid, options))
         if (url.protocol !== 'https:' || url.username || url.password) {
           throw new Error('Mixamo returned an invalid download link.')
         }
         if (!(await downloadHostAccess(url.hostname))) {
           clearTimeout(timeout)
-          showStage(`Waiting for permission to download ${product.name}`)
+          showStage(`Waiting for permission to download ${motion.name}`)
           await askForHost(url.hostname)
           timeout = startTimeout()
         }
-        showStage(`Fetching ${product.name} from ${url.hostname}`)
+        showStage(`Fetching ${motion.name} from ${url.hostname}`)
         const file = await checkedFetch(url.href, { credentials: 'omit', signal: controller.signal })
         const blob = await file.blob()
         if (!blob.size) throw new Error('Mixamo returned an empty file.')
         const ext = preferences.format.includes('dae') ? '.dae' : '.fbx'
-        let filename = product.name + ext
-        for (let i = 2; zip.file(filename); i++) filename = `${product.name} (${i})${ext}`
+        let filename = motion.name + ext
+        for (let i = 2; zip.file(filename); i++) filename = `${motion.name} (${i})${ext}`
         zip.file(filename, blob)
         completed++
         downloading.update((state) => ({ ...state, complete: completed }))
@@ -250,8 +255,8 @@ export async function downloadPack(project: Project, pack: Pack, askForHost: (ho
     saveAs(blob, `${archiveName}.zip`)
   } catch (error) {
     const reason = `${stage} failed. ${error instanceof Error ? error.message : 'Please try again.'}`
-    if (completed && completed < products.length) {
-      throw new InterruptedPack(`${reason} First unfinished clip: ${products[completed].name}.`, completed, async () => {
+    if (completed && completed < clips.length) {
+      throw new InterruptedPack(`${reason} First unfinished clip: ${clips[completed].motion.name}.`, completed, async () => {
         saveAs(await zip.generateAsync({ type: 'blob' }), `${archiveName}-partial.zip`)
       })
     }

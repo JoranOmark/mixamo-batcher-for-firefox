@@ -6,7 +6,7 @@ Choose animations in Mixamo, save them in named packs and export each pack as on
 
 1. Open [Mixamo](https://www.mixamo.com/) in desktop Firefox and sign in. If Mixamo was open when you installed the extension, reload the page. The panel uses your existing Mixamo session.
 2. Preview your character. Enter a **New Project Name** in the panel and click **Create Project**. Enter a **New Pack Name** and click **Create Pack**. The pack starts with a skinned T-pose for this character.
-3. Preview a motion. Once its name appears under **Add Animations**, click **Add To Pack**. Adjust supported sliders in the Mixamo preview with the pack open. Repeat for each clip you want.
+3. Preview a motion or a Mixamo catalog pack. Once its name appears under **Add Animations**, click **Add To Pack**. Each catalog pack adds one batch entry and exports a separate file for each motion inside it. For individual motions, adjust supported sliders in the Mixamo preview with the pack open.
 4. Click **Download Pack** and keep the tab open. The panel shows which file Mixamo is preparing. Firefox saves the ZIP when all files are ready.
 
 ![Firefox pack panel with a T-pose and a throw](images/firefox-pack.png)
@@ -50,4 +50,4 @@ pnpm install --frozen-lockfile
 pnpm build
 ```
 
-The output is `artifacts/animation-pack-exporter-1.3.0.xpi` and `artifacts/animation-pack-exporter-1.3.0-source.zip`. For local testing in Firefox 140 or later, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on** and choose the unsigned XPI. Temporary installations last until Firefox restarts.
+The output is `artifacts/animation-pack-exporter-1.3.1.xpi` and `artifacts/animation-pack-exporter-1.3.1-source.zip`. For local testing in Firefox 140 or later, open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on** and choose the unsigned XPI. Temporary installations last until Firefox restarts.
