@@ -1,12 +1,12 @@
 import { saveAs } from 'file-saver'
 import localforage from 'localforage'
 import { get, writable } from 'svelte/store'
-import { Active, Character, ExportFile, Message, MessageType, Product, Project } from '../types'
-import { products } from './products'
+import { Active, Character, ExportFile, Message, MessageType, Product, Project, panelPortName } from '../types'
+import { products, syncStreamParamsToProduct } from './products'
 import { projects } from './projects'
-import { sendMessageToActiveTab } from './tabs'
 
 export const accessToken = writable<string | null>(null)
+export const sessionStatus = writable('Checking Mixamo session…')
 
 export const selectedCharacter = writable<Character | null>(null)
 
@@ -40,34 +40,51 @@ export function fetchHeaders() {
   }
 }
 
-Promise.all([projects.loading, products.loading]).then(() => {
-  activePersistent.getItem<Active>('active').then((ap) => {
-    if (ap) {
-      active.set(ap)
-    }
-
-    active.subscribe((val) => {
-      activePersistent.setItem('active', val)
-    })
+const restored = Promise.all([
+  projects.loading,
+  products.loading,
+  activePersistent.getItem<Active>('active'),
+]).then(([, , savedSelection]) => {
+  if (savedSelection) {
+    active.set(savedSelection)
+  }
+  active.subscribe((val) => {
+    activePersistent.setItem('active', val)
   })
 })
 
 export function initialize() {
-  chrome.runtime.onMessage.addListener((message: Message) => {
+  const panel = chrome.runtime.connect({ name: panelPortName })
+  panel.onMessage.addListener((message: Message) => {
     // console.log({ ...message, type: MessageType[message.type].toString() })
-    if (message.type === MessageType.SetAccessToken) {
-      accessToken.set(message.payload)
-    } else if (message.type === MessageType.ProductFetched) {
+    if (message.type === MessageType.ProductFetched) {
       selectedProduct.set(message.payload)
       products.set(message.payload)
     } else if (message.type === MessageType.StreamFetched) {
-      // syncStreamParamsToProduct(message.payload)
+      const { projectId, packId } = get(active)
+      const project = projectId && projects.get(projectId)
+      const pack = project && packId && project.packs[packId]
+      if (project && pack) syncStreamParamsToProduct(project, pack, message.payload)
     } else if (message.type === MessageType.PrimaryUpdated) {
-      fetchPrimary()
+      fetchPrimary().catch(() => selectedCharacter.set(null))
     }
   })
 
-  sendMessageToActiveTab({ type: MessageType.Init })
+  chrome.runtime.sendMessage({ type: MessageType.Init }, async (response) => {
+    if (chrome.runtime.lastError || !response?.connected) {
+      sessionStatus.set('Could not connect to the Mixamo tab. Reload the page to try again.')
+      return
+    }
+
+    try {
+      await restored
+    } catch {
+      sessionStatus.set('Could not open saved projects. Reload the page to try again.')
+      return
+    }
+    accessToken.set(response.token || null)
+    sessionStatus.set('Not logged in')
+  })
 }
 
 export function importData(file?: File) {
@@ -97,21 +114,23 @@ export async function exportData(project?: Project) {
   saveAs(new Blob([JSON.stringify(data)]), 'mbu_projects.json')
 }
 
-function fetchPrimary() {
+export async function fetchPrimary(): Promise<Character> {
   const headers = fetchHeaders()
 
   if (!headers) {
-    return
+    throw new Error('Reload Mixamo to reconnect your session.')
   }
 
-  fetch('https://www.mixamo.com/api/v1/characters/primary', {
-    headers,
-  })
-    .then((response) => response.json())
-    .then((json: { primary_character_id: string; primary_character_name: string }) => {
-      selectedCharacter.set({
-        id: json.primary_character_id,
-        name: json.primary_character_name,
-      })
-    })
+  const response = await fetch('https://www.mixamo.com/api/v1/characters/primary', { headers })
+  if (!response.ok) {
+    throw new Error(`Mixamo could not load the current character (HTTP ${response.status}).`)
+  }
+
+  const { primary_character_id: id, primary_character_name: name } = await response.json()
+  if (typeof id !== 'string' || !id || typeof name !== 'string' || !name) {
+    throw new Error('Mixamo did not return a current character. Select a character and try again.')
+  }
+  const character = { id, name }
+  selectedCharacter.set(character)
+  return character
 }

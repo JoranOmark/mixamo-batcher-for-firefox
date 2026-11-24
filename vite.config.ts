@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [
     svelte(),
     copy({
-      targets: [{ src: ['manifest.json', 'icon*'], dest: 'dist' }],
+      targets: [{ src: ['manifest.json', 'permission.html', 'icon*'], dest: 'dist' }],
     }),
   ],
 })

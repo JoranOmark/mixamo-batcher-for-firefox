@@ -21,7 +21,7 @@ export async function exportAllData() {
 }
 
 export function dispatchMessageEvent(message: Message) {
-  window.dispatchEvent(new CustomEvent<Message>('mbu_Message', { detail: message }))
+  window.dispatchEvent(new CustomEvent<string>('mbu_Message', { detail: JSON.stringify(message) }))
 }
 
 ;(function (open, send) {

@@ -1,5 +1,3 @@
-import { Message } from '../types'
-
 export function getActiveTab() {
   return new Promise<chrome.tabs.Tab>((resolve, reject) => {
     chrome.tabs.query({ active: true }, (tabs) => {
@@ -9,13 +7,5 @@ export function getActiveTab() {
         reject()
       }
     })
-  })
-}
-
-export function sendMessageToActiveTab(message: Message, callback?: (response: any) => void) {
-  getActiveTab().then((tab) => {
-    if (tab.id) {
-      chrome.tabs.sendMessage(tab.id, message, callback)
-    }
   })
 }

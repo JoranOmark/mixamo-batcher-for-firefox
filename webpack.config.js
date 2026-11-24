@@ -3,6 +3,7 @@ import path from 'path'
 export default {
   mode: 'production',
   entry: {
+    'permission.js': path.resolve('./src/permission.ts'),
     'background.js': path.resolve('./src/background.ts'),
     'inject-xhr.js': path.resolve('./src/inject-xhr.ts'),
     'xhr.js': path.resolve('./src/xhr.ts'),

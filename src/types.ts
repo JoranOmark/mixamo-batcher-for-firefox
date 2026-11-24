@@ -9,9 +9,14 @@ export enum MessageType {
   FetchNextPage,
   Export,
   Download,
+  CheckDownloadHost,
+  ReviewDownloadHost,
 }
 
+export const panelPortName = 'mixamo-batcher-panel'
+
 export type Message =
+  | { type: MessageType.CheckDownloadHost | MessageType.ReviewDownloadHost; payload: string }
   | {
       type: MessageType.Init
       payload?: any
@@ -64,7 +69,7 @@ export interface Project {
   id: string
   name: string
   preferences: Preferences
-  inplace: boolean
+  motionMode?: 'inPlace' | 'original' | 'preview'
   packs: Record<string, Pack>
 }
 
@@ -113,6 +118,7 @@ export interface Product {
 
 export interface PackProduct extends Product {
   projectOverride: boolean
+  inplaceOverride?: boolean
   preferences: Preferences
 }
 

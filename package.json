@@ -5,7 +5,7 @@
   "scripts": {
     "dev:ui": "vite build --watch",
     "dev:extension": "webpack --watch",
-    "build": "rimraf dist && vite build & webpack && pnpm zip",
+    "build": "rimraf dist && vite build && webpack && pnpm zip",
     "zip": "cd dist && bestzip extension.zip *"
   },
   "devDependencies": {

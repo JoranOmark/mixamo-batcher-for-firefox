@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { zip } from 'lodash'
-  import { onMount } from 'svelte'
+  import { onDestroy } from 'svelte'
   import { derived } from 'svelte/store'
-  import { Message, MessageType, Pack, Product, Project } from '../../types'
+  import { Pack, Product, Project } from '../../types'
   import { active, selectedCharacter, selectedProduct } from '../app'
   import Breadcrumbs from '../components/Breadcrumbs.svelte'
   import Button from '../components/Button.svelte'
@@ -19,11 +18,12 @@
   import Sticky from '../components/Sticky.svelte'
   import Title from '../components/Title.svelte'
   import CaretIcon from '../icons/CaretIcon.svelte'
-  import { syncStreamParamsToProduct, viewProduct } from '../products'
+  import { viewProduct } from '../products'
   import {
     addProduct,
     downloading,
     downloadPack,
+    downloadHostAccess,
     duplicatePack,
     removePack,
     removeProduct,
@@ -101,23 +101,47 @@
     }
   }
 
-  function onMessage(message: Message) {
-    if (message.type === MessageType.StreamFetched) {
-      syncStreamParamsToProduct(project, pack, message.payload)
-    }
-  }
+  type HostPrompt = { host: string; allow: (() => void) | null; cancel: () => void }
+  let hostPrompt: HostPrompt | null = null
+  let closed = false
 
-  function onClickDownloadPack() {
-    downloadPack(project, pack)
-  }
-
-  onMount(() => {
-    chrome.runtime.onMessage.addListener(onMessage)
-
-    return () => {
-      chrome.runtime.onMessage.removeListener(onMessage)
-    }
+  onDestroy(() => {
+    closed = true
+    hostPrompt?.cancel()
   })
+
+  function askForHost(host: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const cancel = () => {
+        hostPrompt = null
+        reject(new Error(`Access to ${host} was not granted. You can retry Download Pack.`))
+      }
+      if (closed) return cancel()
+      showSettings = false
+      hostPrompt = {
+        host,
+        cancel,
+        allow() {
+          downloadHostAccess(host, true).then((allowed) => {
+            hostPrompt = null
+            if (allowed) resolve()
+            else cancel()
+          }, (error) => { hostPrompt = null; reject(error) })
+          hostPrompt = { host, cancel, allow: null }
+        },
+      }
+    })
+  }
+
+  let downloadError = ''
+  async function onClickDownloadPack() {
+    downloadError = ''
+    try {
+      await downloadPack(project, pack, askForHost)
+    } catch (error) {
+      downloadError = error instanceof Error ? error.message : 'Download failed. Please try again.'
+    }
+  }
 </script>
 
 <Main>
@@ -129,7 +153,7 @@
       <Breadcrumbs />
     </Section>
     <Section>
-      <Button block on:click={onClickToggleSettings}>
+      <Button block disabled={Boolean(hostPrompt)} on:click={onClickToggleSettings}>
         {showSettings ? 'Hide' : 'Show'} Pack Settings
       </Button>
     </Section>
@@ -162,7 +186,7 @@
       <Section>
         <Button
           block
-          disabled={$downloading.total > 0}
+          disabled={$downloading.total > 0 || !pack.products.length}
           title={$downloading.total > 0 ? 'Download in progress' : ''}
           on:click={onClickDownloadPack}
         >
@@ -170,12 +194,26 @@
             {#if $downloading.zip > 0}
               Preparing Zip ({$downloading.zip}%)
             {:else}
-              Processing ({$downloading.complete} / {$downloading.total})
+              {$downloading.complete} / {$downloading.total} files ready
             {/if}
           {:else}
             Download Pack
           {/if}
         </Button>
+        {#if $downloading.total > 0}
+          <div class="download-status" role="status">{$downloading.stage}</div>
+          {#if hostPrompt}
+            <p class="download-status">Mixamo sent a file link on <strong>{hostPrompt.host}</strong>.</p>
+            {#if hostPrompt.allow}
+              <Button block on:click={hostPrompt.allow}>Review download permission</Button>
+              <Button block on:click={hostPrompt.cancel}>Cancel download</Button>
+            {:else}
+              <p>Finish the permission request in the tab that opened.</p>
+            {/if}
+          {/if}
+        {:else if downloadError}
+          <div class="download-status" role="alert">{downloadError}</div>
+        {/if}
       </Section>
       <Section>
         <Heading>Add Animations</Heading>
@@ -229,11 +267,15 @@
                   {#if product.projectOverride}
                     <div class="animation-settings">
                       <Heading>Download Preferences</Heading>
-                      <Preferences
-                        showInplace={product.details.supports_inplace}
-                        bind:inplace={product.details.gms_hash.inplace}
-                        bind:preferences={product.preferences}
-                      />
+                      {#if product.details.supports_inplace}
+                        <label>
+                          <input type="checkbox"
+                            checked={product.inplaceOverride ?? product.details.gms_hash.inplace}
+                            on:change={(event) => product.inplaceOverride = event.currentTarget.checked} />
+                          In Place
+                        </label>
+                      {/if}
+                      <Preferences bind:preferences={product.preferences} />
                     </div>
                   {/if}
                   <Button block on:click={() => onClickRemoveProduct(product)}>Remove</Button>
@@ -251,6 +293,11 @@
 </Main>
 
 <style>
+  .download-status {
+    padding-top: 6px;
+    overflow-wrap: anywhere;
+  }
+
   .center-pad {
     padding: 10px 10px 0 10px;
     text-align: center;

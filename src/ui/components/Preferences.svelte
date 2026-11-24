@@ -2,22 +2,9 @@
   import { Preferences } from '../../types'
   import Select from './Select.svelte'
 
-  export let showInplace: boolean = true
-  export let inplace: boolean = false
-  export let preferences: Preferences = {
-    format: 'fbx7_2019',
-    skin: 'true',
-    fps: '30',
-    reducekf: '0',
-  }
+  export let preferences: Preferences
 </script>
 
-{#if showInplace}
-  <label>
-    <input type="checkbox" bind:checked={inplace} />
-    In Place
-  </label>
-{/if}
 <Select label="Format" bind:value={preferences.format} on:change}>
   <option value="fbx7_2019">FBX Binary(.fbx)</option>
   <option value="fbx7_2019_ascii">FBX ASCII(.fbx)</option>
@@ -30,6 +17,7 @@
   <option value="true">With Skin</option>
   <option value="false">Without Skin</option>
 </Select>
+<p>With Skin includes the character mesh. Without Skin exports the animation and skeleton.</p>
 <Select label="Frames per Second" bind:value={preferences.fps} on:change}>
   <option value="24">24</option>
   <option value="30">30</option>
