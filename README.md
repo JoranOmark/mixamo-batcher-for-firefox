@@ -1,5 +1,7 @@
 # Introduction
 
+This fork is for developing a Firefox version of Mixamo Batcher.
+
 **Mixamo Batcher allows you to create and save animation packs, and download them as an archive file.**
 
 ![Preview](./images/preview.jpg)
