@@ -11,7 +11,8 @@
   "permissions": [
     "https://www.mixamo.com/*",
     "https://mixamo.com/*",
-    "https://mixamo-storage-prod.s3-us-west-2.amazonaws.com/*"
+    "https://mixamo-storage-prod.s3-us-west-2.amazonaws.com/*",
+    "https://mixamo-storage-prod.s3.us-west-2.amazonaws.com/*"
   ],
   "background": {
     "scripts": ["background.js"]
